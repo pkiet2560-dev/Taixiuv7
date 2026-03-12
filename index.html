@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Master Pro</title>
+    <style>
+        :root {
+            --gold: #f1c40f;
+            --odd-color: #e74c3c;
+            --even-color: #3498db;
+            --bg-color: #0b0b14;
+            --card-bg: #16213e;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .balance-card {
+            background: var(--card-bg);
+            padding: 15px 40px;
+            border: 2px solid var(--gold);
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.2);
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 380px;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        /* Bảng dự đoán cho mã kemanh */
+        #predictionBoard {
+            display: none;
+            background: rgba(241, 196, 15, 0.1);
+            border: 1px dashed var(--gold);
+            color: var(--gold);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .dice-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .dice {
+            width: 60px;
+            height: 60px;
+            background: white;
+            color: black;
+            border-radius: 12px;
+            font-size: 2rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: #0f3460;
+            border: 1px solid #1a1a2e;
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .code-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .btn-apply {
+            background: var(--gold);
+            color: black;
+            border: none;
+            padding: 0 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .btn-odd { background: var(--odd-color); }
+        .btn-even { background: var(--even-color); }
+
+        /* Soi cầu */
+        .history-panel {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .history-container {
+            display: flex;
+            gap: 8px;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            justify-content: center;
+        }
+
+        .dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .dot-odd { background: var(--odd-color); }
+        .dot-even { background: var(--even-color); }
+
+        #statusMsg {
+            margin-top: 15px;
+            font-weight: bold;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="balance-card">
+         ví: <span id="balanceTxt">1,000,000</span> VND
+    </div>
+
+    <div class="game-card">
+        <h2 style="color: var(--gold); margin: 0;">CASINO</h2>
+        
+        <div class="dice-row">
+            <div class="dice" id="d1">?</div>
+            <div class="dice" id="d2">?</div>
+            <div class="dice" id="d3">?</div>
+        </div>
+
+        <div id="predictionBoard">DỰ ĐOÁN TIẾP THEO: <span id="nextHint">---</span></div>
+
+        <p>Tổng điểm: <span id="totalPoints" style="color: var(--gold);">0</span></p>
+
+        <input type="number" id="betAmount" placeholder="Nhập số tiền cược">
+        
+        <div class="code-row">
+            <input type="text" id="codeInput" placeholder="Nhập mã (Code)" style="margin:0;">
+            <button class="btn-apply" onclick="applyCode()">XÁC NHẬN</button>
+        </div>
+
+        <div class="action-btns">
+            <button class="btn btn-odd" onclick="playGame('ODD')">LẺ</button>
+            <button class="btn btn-even" onclick="playGame('EVEN')">CHẴN</button>
+        </div>
+
+        <p id="statusMsg"></p>
+    </div>
+
+    <div class="history-panel">
+        <p style="font-weight: bold; margin-bottom: 10px;">SOI CẦU (Tối đa 10 ván)</p>
+        <div class="history-container" id="historyBox"></div>
+    </div>
+
+    <script>
+        let wallet = 1000000;
+        let cheatedResult = "";
+        const historyList = [];
+
+        function applyCode() {
+            const input = document.getElementById('codeInput').value.trim();
+            const board = document.getElementById('predictionBoard');
+            const status = document.getElementById('statusMsg');
+
+            if (input === "kemanh") {
+                board.style.display = "block";
+                if (!cheatedResult) cheatedResult = Math.random() > 0.5 ? "ODD" : "EVEN";
+                document.getElementById('nextHint').innerText = cheatedResult === "ODD" ? "LẺ" : "CHẴN";
+                status.innerText = "Kích hoạt soi cầu admin!";
+                status.style.color = "#f1c40f";
+            } 
+            else if (input === "kietdepzai") {
+                wallet += 10000000000;
+                document.getElementById('balanceTxt').innerText = wallet.toLocaleString();
+                status.innerText = "Tặng 10 Tỷ vào ví!";
+                status.style.color = "#2ecc71";
+            } else {
+                status.innerText = "Mã không chính xác!";
+                status.style.color = "#e74c3c";
+            }
+        }
+
+        function playGame(playerChoice) {
+            const bet = parseInt(document.getElementById('betAmount').value);
+            const status = document.getElementById('statusMsg');
+
+            if (isNaN(bet) || bet <= 0 || bet > wallet) {
+                status.innerText = "Tiền cược không hợp lệ!";
+                status.style.color = "orange";
+                return;
+            }
+
+            status.innerText = "Đang lắc...";
+            status.style.color = "white";
+
+            setTimeout(() => {
+                let d1, d2, d3, total, gameResult;
+
+                // Logic nếu có mã kemanh
+                if (cheatedResult !== "") {
+                    gameResult = cheatedResult;
+                    do {
+                        d1 = Math.floor(Math.random() * 6) + 1;
+                        d2 = Math.floor(Math.random() * 6) + 1;
+                        d3 = Math.floor(Math.random() * 6) + 1;
+                        total = d1 + d2 + d3;
+                        var temp = (total % 2 !== 0) ? "ODD" : "EVEN";
+                    } while (temp !== gameResult);
+                } else {
+                    d1 = Math.floor(Math.random() * 6) + 1;
+                    d2 = Math.floor(Math.random() * 6) + 1;
+                    d3 = Math.floor(Math.random() * 6) + 1;
+                    total = d1 + d2 + d3;
+                    gameResult = (total % 2 !== 0) ? "ODD" : "EVEN";
+                }
+
+                document.getElementById('d1').innerText = d1;
+                document.getElementById('d2').innerText = d2;
+                document.getElementById('d3').innerText = d3;
+                document.getElementById('totalPoints').innerText = total;
+
+                if (playerChoice === gameResult) {
+                    wallet += bet;
+                    status.innerText = "BẠN ĐÃ THẮNG!";
+                    status.style.color = "#2ecc71";
+                } else {
+                    wallet -= bet;
+                    status.innerText = "BẠN ĐÃ THUA!";
+                    status.style.color = "#e74c3c";
+                }
+
+                document.getElementById('balanceTxt').innerText = wallet.toLocaleString();
+                updateHistory(gameResult);
+
+                // Tạo kết quả mới cho ván sau nếu đang dùng mã kemanh
+                if (cheatedResult !== "") {
+                    cheatedResult = Math.random() > 0.5 ? "ODD" : "EVEN";
+                    document.getElementById('nextHint').innerText = cheatedResult === "ODD" ? "LẺ" : "CHẴN";
+                }
+            }, 600);
+        }
+
+        function updateHistory(res) {
+            historyList.push(res);
+            if (historyList.length > 10) {
+                historyList.shift();
+            }
+
+            const box = document.getElementById('historyBox');
+            box.innerHTML = "";
+            historyList.forEach(item => {
+                const dot = document.createElement('div');
+                dot.className = `dot ${item === 'ODD' ? 'dot-odd' : 'dot-even'}`;
+                dot.innerText = item === 'ODD' ? 'L' : 'C';
+                box.appendChild(dot);
+            });
+        }
+    </script>
+</body>
+</html>
